@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Secrets & local config
+.env
+
+# Runtime data / caches (regenerated)
+qdrant_data/
+logs/
+user_memory.json
+.bq_context_cache.json
+notebooks/top_categories.csv
+
+# Tooling / harness internals
+.claude/
+.codex/
+.agents/

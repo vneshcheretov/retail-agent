@@ -1,0 +1,502 @@
+[
+  {
+    "question": "What is our total revenue all time?",
+    "sql": "SELECT SUM(sale_price) AS total_revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items`;",
+    "report": "Total all-time revenue is **$10,852,616.08**.\n\nSo what: this is the top-line revenue benchmark to use for overall business performance tracking."
+  },
+  {
+    "question": "What is the total revenue for the current year?",
+    "sql": "SELECT SUM(sale_price) AS total_revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items`\nWHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE())",
+    "report": "Total revenue for the current year is **2,793,366.58**.\n\nSo what: This is the current-year revenue baseline for tracking growth and performance."
+  },
+  {
+    "question": "What is our monthly revenue this year?",
+    "sql": "SELECT\n  DATE_TRUNC(DATE(created_at), MONTH) AS month,\n  SUM(sale_price) AS monthly_revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items`\nWHERE EXTRACT(YEAR FROM DATE(created_at)) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY month\nORDER BY month\nLIMIT 100",
+    "report": "Monthly revenue this year has risen from **339,730.06** in January to **803,116.85** in June.\n\nBy month:\n- Jan: **339,730.06**\n- Feb: **332,232.88**\n- Mar: **393,351.88**\n- Apr: **417,301.61**\n- May: **507,633.30**\n- Jun: **803,116.85**\n\nSo what: Revenue is trending up sharply, with June far above the earlier months."
+  },
+  {
+    "question": "What is the revenue for each calendar year?",
+    "sql": "SELECT\n  EXTRACT(YEAR FROM created_at) AS calendar_year,\n  SUM(sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items`\nGROUP BY calendar_year\nORDER BY calendar_year;",
+    "report": "Revenue by calendar year:\n- 2019: $102,840.58\n- 2020: $316,905.66\n- 2021: $581,996.91\n- 2022: $902,406.65\n- 2023: $1,306,701.41\n- 2024: $1,896,449.54\n- 2025: $2,951,948.74\n- 2026: $2,793,366.58\n\nSo what: Revenue rose sharply from 2019 to 2025, then dipped slightly in 2026."
+  },
+  {
+    "question": "What is the average order value?",
+    "sql": "SELECT AVG(order_total) AS average_order_value\nFROM (\n  SELECT order_id, SUM(sale_price) AS order_total\n  FROM `bigquery-public-data.thelook_ecommerce.order_items`\n  GROUP BY order_id\n);",
+    "report": "The average order value is **$86.48**.\n\nSo what: This is the typical amount each order brings in, useful for tracking basket size and comparing sales performance over time."
+  },
+  {
+    "question": "How many orders have we had in total?",
+    "sql": "SELECT COUNT(*) AS total_orders\nFROM `bigquery-public-data.thelook_ecommerce.orders`;",
+    "report": "We have had **125,494 total orders**.\n\nSo what: This is the full order volume in the dataset and can be used as the baseline for sales, demand, and capacity planning."
+  },
+  {
+    "question": "How many orders were placed each month this year?",
+    "sql": "SELECT\n  FORMAT_TIMESTAMP('%Y-%m', created_at) AS order_month,\n  COUNT(*) AS orders_placed\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_TIMESTAMP())\nGROUP BY order_month\nORDER BY order_month;",
+    "report": "Orders placed this year by month were: January 2026: 3,953; February: 3,795; March: 4,565; April: 4,923; May: 5,916; June: 8,892.\n\nOrders rose overall from 3,953 in January to 8,892 in June, with a small dip in February before steady growth through spring and a sharp jump in June. So what: order volume is accelerating, so inventory and staffing should be planned for higher demand."
+  },
+  {
+    "question": "What is our revenue by quarter for the last two years?",
+    "sql": "SELECT\n  FORMAT_DATE('%Y-Q%Q', DATE_TRUNC(DATE(o.created_at), QUARTER)) AS quarter,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.orders` o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` oi\n  ON o.order_id = oi.order_id\nWHERE o.created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 730 DAY)\nGROUP BY quarter\nORDER BY quarter\nLIMIT 100",
+    "report": "Revenue by quarter for the last two years was: 2024-Q2: $38,465.50; 2024-Q3: $488,845.03; 2024-Q4: $562,603.08; 2025-Q1: $579,491.54; 2025-Q2: $673,802.69; 2025-Q3: $788,508.00; 2025-Q4: $915,817.69; 2026-Q1: $1,069,063.88; 2026-Q2: $1,713,096.04.\n\nSo what: Revenue rose steadily every quarter, with the biggest jump in 2026-Q2."
+  },
+  {
+    "question": "What is the total number of items sold all time?",
+    "sql": "SELECT SUM(num_of_item) AS total_items_sold\nFROM `bigquery-public-data.thelook_ecommerce.orders`;",
+    "report": "Total items sold all time: **182,363**.\n\nSo what: This is the cumulative volume sold across all recorded transactions, useful for sizing overall demand and inventory flow."
+  },
+  {
+    "question": "What is the average number of items per order?",
+    "sql": "SELECT AVG(num_of_item) AS average_items_per_order\nFROM `bigquery-public-data.thelook_ecommerce.orders`;",
+    "report": "Average items per order is **1.45**.\n\nSo what: orders are small on average, so upsell or bundle strategies may help lift basket size."
+  },
+  {
+    "question": "Which product categories bring the most revenue?",
+    "sql": "SELECT\n  p.category,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY p.category\nORDER BY revenue DESC\nLIMIT 100",
+    "report": "Outerwear & Coats brings the most revenue at $1.33M, followed by Jeans at $1.29M and Sweaters at $827K. Next highest are Fashion Hoodies & Sweatshirts ($647K), Swim ($642K), and Suits & Sport Coats ($633K). Revenue drops to about $550K for Sleep & Lounge and below $506K for the next group.\n\nSo what: Revenue is concentrated in a few outerwear and denim categories, so those deserve the most attention for inventory and promotion."
+  },
+  {
+    "question": "What are the 10 best selling products by units?",
+    "sql": "SELECT\n  p.id AS product_id,\n  p.name AS product_name,\n  p.brand,\n  p.category,\n  COUNT(*) AS units_sold\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY product_id, product_name, p.brand, p.category\nORDER BY units_sold DESC, product_id\nLIMIT 10",
+    "report": "The 10 best-selling products by units are: Russell Athletic Men's Dri-Power Performance Sleeveless Tee (18), Elegant Charcoal Grey Two Button Three Piece Suit (18), Savane Men's Big No-Iron Pleated Twill Pant (18), Speedo Men's Nylon Stripe Square Leg Bathing Suit (18), Calvin Klein Jeans Women's Faille Skinny Pant (17), Thigh Hi Two Tone (17), Soft Toe Socks with Furry Animal Designs Size 9-11 Pack of 6 (17), Santa Hula Mele Kalikimaka Christmas Hawaiian Shirt (17), RETROFIT Ivy League Mens Cardigan (17), and French Connection Men's Underwhere Crew Sweater (17). So what: sales are tightly clustered, with only a 1-unit gap between ranks 1\u20134 and 5\u201310."
+  },
+  {
+    "question": "Which brands generate the most revenue?",
+    "sql": "SELECT\n  p.brand,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` AS p\n  ON oi.product_id = p.id\nGROUP BY p.brand\nORDER BY revenue DESC\nLIMIT 100",
+    "report": "Calvin Klein generates the most revenue at 203,232.14, followed by Diesel at 194,891.45 and True Religion at 186,598.34. Carhartt ranks fourth with 179,170.72, and 7 For All Mankind is fifth at 176,161.47.\n\nSo what: revenue is concentrated in a few top brands, so these leaders are the clearest priorities for inventory and promotion."
+  },
+  {
+    "question": "How much revenue does each department make?",
+    "sql": "SELECT\n  p.department,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` AS p\n  ON oi.product_id = p.id\nGROUP BY p.department\nORDER BY revenue DESC\nLIMIT 100;",
+    "report": "Men generated $5,759,848 in revenue and Women generated $5,092,768. Men made about $667,080 more than Women, or roughly 13% higher revenue. So what: Men is the larger revenue department, so it\u2019s the stronger priority for sales and inventory focus."
+  },
+  {
+    "question": "Which 10 products have the highest profit margin?",
+    "sql": "SELECT\n  p.id AS product_id,\n  p.name,\n  p.brand,\n  p.category,\n  p.department,\n  p.retail_price,\n  p.cost,\n  (p.retail_price - p.cost) AS profit_per_unit,\n  SAFE_DIVIDE(p.retail_price - p.cost, p.retail_price) AS profit_margin\nFROM `bigquery-public-data.thelook_ecommerce.products` p\nWHERE p.retail_price IS NOT NULL\n  AND p.cost IS NOT NULL\n  AND p.retail_price > 0\nORDER BY profit_margin DESC, profit_per_unit DESC\nLIMIT 10",
+    "report": "The 10 highest-margin products are all tied at about 66.8% margin:\n\n1. Rebecca Minkoff Women\u2019s Becky Jacket \u2014 66.9%\n2. Ted Baker Women\u2019s Mowna \u2014 66.9%\n3. Eddie Bauer Signature Stretch Blazer \u2014 66.9%\n4. Kenneth Cole Women\u2019s Structural Suit Jacket \u2014 66.9%\n5. DKNYC Women\u2019s 2 Button Blazer \u2014 66.9%\n6. Ulla Popken Plus Size Soutache Embroidered Jacket \u2014 66.9%\n7. Plus Size Black Jazzy Jacket \u2014 66.9%\n8. Allegra K Front Opening Long Sleeve Womenwear Form-fitting Blazer Off White XS \u2014 66.9%\n9. Allegra K Women Horizontal Stripes Bubble Sleeve Spring Coat Black XS \u2014 66.9%\n10. BB Dakota Yellow Marigold Naples Boxy Cropped Blazer \u2014 66.8%\n\nSo what: margin is essentially flat across these top products, so pricing or cost changes would be needed to separate winners."
+  },
+  {
+    "question": "What is the average retail price by category?",
+    "sql": "SELECT\n  category,\n  AVG(retail_price) AS average_retail_price\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY category\nORDER BY category\nLIMIT 100",
+    "report": "Average retail price by category ranges from 16.76 to 146.02. Highest: Outerwear & Coats $146.02, Suits & Sport Coats $126.56, Suits $116.16, Jeans $97.85, Blazers & Jackets $92.60. Mid-range includes Dresses $84.20, Clothing Sets $84.84, Sweaters $75.32, Pants $59.81, Swim $57.82. Lowest: Socks & Hosiery $16.76, Socks $20.42, Leggings $27.15, Underwear $27.16, Intimates $33.71. So what: outerwear and tailored categories command the highest prices, while basics sit at the low end."
+  },
+  {
+    "question": "Which categories have the most products in the catalog?",
+    "sql": "SELECT\n  category,\n  COUNT(*) AS product_count\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY category\nORDER BY product_count DESC\nLIMIT 100",
+    "report": "Intimates has the most products in the catalog with 2,363. The next largest categories are Jeans (1,999), Tops & Tees (1,868), Fashion Hoodies & Sweatshirts (1,866), and Swim (1,798). Other high-count categories include Sleep & Lounge (1,771), Shorts (1,765), and Sweaters (1,737).\n\nSo what: Inventory is concentrated in a few core apparel categories, especially Intimates and Denim."
+  },
+  {
+    "question": "What are the top 10 products by revenue?",
+    "sql": "SELECT\n  p.id AS product_id,\n  p.name AS product_name,\n  p.brand,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY 1, 2, 3\nORDER BY revenue DESC\nLIMIT 10",
+    "report": "Top 10 products by revenue are: 1) Nike Jordan Retro 11 Bred Bootie Socks \u2014 $9,933; 2) ASCIS Cushion Low Socks (Pack of 3) \u2014 $9,933; 3) Canada Goose Men's The Chateau Jacket \u2014 $9,780; 4) Nobis Yatesy Parka \u2014 $9,500; 5) Robert Graham Men's Barbican Velvet Blazer \u2014 $8,376; 6) Canada Goose Women's Mystique \u2014 $8,250; 7) Mens Nike AirJordan Varsity Hoodie Jacket Grey / Black \u2014 $8,127; 8) Darla \u2014 $7,992; 9) Alpha Industries Rip Stop Short \u2014 $7,992; 10) Canada Goose Women's Solaris \u2014 $7,645. So what: premium outerwear and branded apparel dominate the revenue list."
+  },
+  {
+    "question": "Which brands have the most products?",
+    "sql": "SELECT\n  brand,\n  COUNT(*) AS product_count\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY brand\nORDER BY product_count DESC, brand\nLIMIT 100",
+    "report": "Allegra K has the most products by far at 1,034. The next highest are Calvin Klein (497) and Carhartt (388), followed by Hanes (308), Volcom (292), and Nautica (263). After that come Levi\u2019s (259), Quiksilver (257), Tommy Hilfiger (251), and Columbia (236).  \n\nSo what: product assortment is heavily concentrated in Allegra K, which may drive a large share of brand visibility and sales opportunities."
+  },
+  {
+    "question": "What is the average product cost by department?",
+    "sql": "SELECT\n  department,\n  AVG(cost) AS average_product_cost\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY department\nORDER BY department\nLIMIT 100",
+    "report": "Men has the higher average product cost at 30.46, compared with Women at 26.86. The gap is 3.60, or about 13% higher for Men.\n\nSo what: Men\u2019s department products cost more on average, so pricing and margin plans may need to be set separately by department."
+  },
+  {
+    "question": "Which products have the largest gap between retail price and cost?",
+    "sql": "SELECT\n  id,\n  name,\n  brand,\n  category,\n  department,\n  cost,\n  retail_price,\n  (retail_price - cost) AS price_gap\nFROM `bigquery-public-data.thelook_ecommerce.products`\nORDER BY price_gap DESC\nLIMIT 100",
+    "report": "The largest retail-minus-cost gaps are: Darla by Alpha Industries at $594.40, Nobis Yatesy Parka at $568.10, and The North Face Apex Bionic Soft Shell Jacket (Men\u2019s) at $539.99. Next are The North Face Nuptse 2 Jacket Deep Water Blue Men\u2019s at $535.48 and The North Face Freedom Men\u2019s Ski Pants 2013 at $533.67.  \n\nSo what: These products offer the biggest markup dollars, so they\u2019re the strongest candidates for margin-focused pricing and promotion decisions."
+  },
+  {
+    "question": "What is total profit by category?",
+    "sql": "SELECT\n  p.category,\n  SUM(oi.sale_price - p.cost) AS total_profit\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` AS p\n  ON oi.product_id = p.id\nGROUP BY p.category\nORDER BY total_profit DESC\nLIMIT 100",
+    "report": "Total profit by category is led by Outerwear & Coats at 739,900.24, followed by Jeans at 598,876.49 and Sweaters at 429,446.94. Other high-profit categories include Suits & Sport Coats (378,934.00), Swim (315,273.75), and Fashion Hoodies & Sweatshirts (310,518.83). The lowest profit categories are Clothing Sets (8,035.80), Jumpsuits & Rompers (20,357.49), and Leggings (31,792.99). So what: profit is heavily concentrated in a few outerwear and denim categories, so those deserve the most attention."
+  },
+  {
+    "question": "Who are our top 5 customers by total spend?",
+    "sql": "SELECT\n  u.id AS user_id,\n  u.first_name,\n  u.last_name,\n  u.email,\n  SUM(oi.sale_price) AS total_spend\nFROM `bigquery-public-data.thelook_ecommerce.users` AS u\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON u.id = oi.user_id\nGROUP BY\n  user_id, first_name, last_name, email\nORDER BY total_spend DESC\nLIMIT 5",
+    "report": "Top 5 customers by total spend are: user_id 27084 ($1,803.46), 65631 ($1,722.42), 50263 ($1,694.18), 26680 ($1,495.98), and 25707 ($1,467.25).\n\nSo what: These five customers are your highest-value accounts and are the best targets for retention and loyalty efforts."
+  },
+  {
+    "question": "Who are our top 10 customers by number of orders?",
+    "sql": "SELECT\n  user_id,\n  COUNT(*) AS number_of_orders\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nGROUP BY user_id\nORDER BY number_of_orders DESC, user_id\nLIMIT 10",
+    "report": "The top 10 customers by number of orders are tied at 4 orders each: user_id 33, 50, 51, 52, 73, 122, 164, 183, 187, and 205.\n\nSo what: these customers are equally our highest-order buyers, so retention efforts should target all 10 rather than a single standout."
+  },
+  {
+    "question": "How much does the average customer spend?",
+    "sql": "SELECT AVG(total_spent) AS average_customer_spend\nFROM (\n  SELECT user_id, SUM(sale_price) AS total_spent\n  FROM `bigquery-public-data.thelook_ecommerce.order_items`\n  GROUP BY user_id\n) t;",
+    "report": "The average customer spends **$135.48**.\n\nThis is based on the provided data row showing `average_customer_spend` of **135.48495770585023**, rounded to two decimal places for readability.\n\n**So what:** This gives you a clear benchmark for typical customer value when planning pricing, promotions, and targets."
+  },
+  {
+    "question": "How many customers have placed more than one order?",
+    "sql": "SELECT COUNT(*) AS customers_with_more_than_one_order\nFROM (\n  SELECT user_id\n  FROM `bigquery-public-data.thelook_ecommerce.orders`\n  GROUP BY user_id\n  HAVING COUNT(*) > 1\n) t",
+    "report": "30,136 customers have placed more than one order. This is the full count shown in the data, with no additional breakdown provided.\n\nSo what: Repeat purchasing is substantial, which suggests a strong base of returning customers to retain and grow."
+  },
+  {
+    "question": "What share of customers are repeat buyers?",
+    "sql": "SELECT\n  SAFE_DIVIDE(COUNTIF(order_count > 1), COUNT(*)) AS repeat_buyer_share\nFROM (\n  SELECT\n    user_id,\n    COUNT(*) AS order_count\n  FROM `bigquery-public-data.thelook_ecommerce.orders`\n  GROUP BY user_id\n) t",
+    "report": "About 37.6% of customers are repeat buyers.\n\nSo what: Roughly 3 in 8 customers come back, suggesting meaningful loyalty but also room to grow repeat business."
+  },
+  {
+    "question": "What is the average number of orders per customer?",
+    "sql": "SELECT AVG(order_count) AS average_orders_per_customer\nFROM (\n  SELECT user_id, COUNT(*) AS order_count\n  FROM `bigquery-public-data.thelook_ecommerce.orders`\n  GROUP BY user_id\n)",
+    "report": "Average orders per customer is **1.57**.\n\nThis means each customer placed about **1.6 orders on average** across the dataset.\n\n**So what:** Repeat purchasing is modest, so there\u2019s room to grow order frequency with retention or reactivation efforts."
+  },
+  {
+    "question": "Which customers spent the most in the current year?",
+    "sql": "SELECT\n  o.user_id,\n  u.first_name,\n  u.last_name,\n  u.email,\n  SUM(oi.sale_price) AS total_spent\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON o.order_id = oi.order_id\nJOIN `bigquery-public-data.thelook_ecommerce.users` AS u\n  ON o.user_id = u.id\nWHERE EXTRACT(YEAR FROM o.created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY o.user_id, u.first_name, u.last_name, u.email\nORDER BY total_spent DESC\nLIMIT 100;",
+    "report": "The top spenders this year are user_id 65631 at 1,722.42, 26680 at 1,495.98, and 25707 at 1,467.25. The next highest are 441 at 1,305.99 and 3303 at 1,282.67. The top 10 all spent at least 1,216.32.\n\nSo what: these customers are the best targets for loyalty rewards, upsell offers, and retention efforts."
+  },
+  {
+    "question": "How many one-time customers do we have?",
+    "sql": "SELECT COUNT(*) AS one_time_customers\nFROM (\n  SELECT user_id\n  FROM `bigquery-public-data.thelook_ecommerce.orders`\n  GROUP BY user_id\n  HAVING COUNT(*) = 1\n);",
+    "report": "We have 49,966 one-time customers.\n\nThis is the total count shown in the data. It indicates a large portion of the customer base has purchased only once, which may be an opportunity to improve repeat purchase rates.\n\nSo what: focus on converting even a small share of these 49,966 customers into repeat buyers to drive growth."
+  },
+  {
+    "question": "Which product categories have the highest return rate?",
+    "sql": "SELECT\n  p.category,\n  COUNTIF(oi.status = 'Returned') AS returned_items,\n  COUNT(*) AS total_items,\n  SAFE_DIVIDE(COUNTIF(oi.status = 'Returned'), COUNT(*)) AS return_rate\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` AS p\n  ON oi.product_id = p.id\nGROUP BY p.category\nORDER BY return_rate DESC, returned_items DESC\nLIMIT 100",
+    "report": "Clothing Sets has the highest return rate at 11.8% (29 of 246 items), followed by Plus at 10.6% (453 of 4,283), Skirts at 10.6% (227 of 2,149), Accessories at 10.4% (1,028 of 9,885), and Sleep & Lounge at 10.4% (1,163 of 11,184).  \n\nSo what: focus return-reduction efforts first on Clothing Sets and the other highest-rate categories."
+  },
+  {
+    "question": "What is our overall return rate?",
+    "sql": "SELECT\n  SAFE_DIVIDE(COUNTIF(status = 'Returned'), COUNT(*)) AS overall_return_rate\nFROM `bigquery-public-data.thelook_ecommerce.orders`;",
+    "report": "Our overall return rate is 9.99% (0.0999).\n\nSo what: About 1 in 10 orders is being returned, which is a meaningful level to monitor for product, sizing, or expectation issues."
+  },
+  {
+    "question": "How many orders were cancelled in total?",
+    "sql": "SELECT COUNT(*) AS total_cancelled_orders\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE status = 'Cancelled'",
+    "report": "Total cancelled orders: **18,666**.\n\nThis is the full count of cancelled orders in the data provided.  \n\nSo what: This gives a clear baseline for tracking cancellation reduction over time."
+  },
+  {
+    "question": "What is the cancellation rate by month this year?",
+    "sql": "SELECT\n  DATE_TRUNC(DATE(created_at), MONTH) AS month,\n  COUNTIF(status = 'Cancelled') / COUNT(*) AS cancellation_rate\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY month\nORDER BY month\nLIMIT 100",
+    "report": "Cancellation rates this year are: Jan 13.9%, Feb 15.3%, Mar 14.8%, Apr 14.6%, May 15.1%, and Jun 14.2%.\n\nThe rate peaked in February at 15.3% and was lowest in January at 13.9%, with the rest of the months staying fairly steady around 14%\u201315%.\n\nSo what: cancellations are stable, but February and May are the main months to review for avoidable losses."
+  },
+  {
+    "question": "Which brands have the highest return rate?",
+    "sql": "SELECT\n  p.brand,\n  COUNTIF(oi.status = 'Returned') AS returned_items,\n  COUNT(*) AS total_items,\n  SAFE_DIVIDE(COUNTIF(oi.status = 'Returned'), COUNT(*)) AS return_rate\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY p.brand\nHAVING COUNT(*) > 0\nORDER BY return_rate DESC, returned_items DESC\nLIMIT 100",
+    "report": "Online-Welcome has the highest return rate at 100% (1 returned out of 1 item). The next-highest group is 50%: Shirt Me Up, BDI, Body Trends, Emanuel by Emanuel Ungaro, indigo, Fashion, LAST KISS, Power Trip, Rival, RocketWear, Rooster, Super Mario, Bergama, Anne Cole, Undrest, Hold Your Haunches, Squish, Amnesty International, FRYE, Sperry Top-Sider, Back to Back, Taylor, and Adi Designs.  \n\nSo what: Online-Welcome is the clearest return-risk brand, and the 50% brands are the next priority for review."
+  },
+  {
+    "question": "How much revenue did we lose to returns?",
+    "sql": "SELECT\n  SUM(CASE WHEN status = 'Returned' THEN sale_price ELSE 0 END) AS revenue_lost_to_returns\nFROM `bigquery-public-data.thelook_ecommerce.order_items`;",
+    "report": "We lost **$1,088,627.52** to returns. This is the full revenue impact shown in the data row for `revenue_lost_to_returns`.\n\nSo what: returns are costing over **$1.08M**, so reducing return rates would directly improve revenue."
+  },
+  {
+    "question": "What is the return rate by department?",
+    "sql": "SELECT\n  p.department,\n  COUNTIF(oi.status = 'Returned') AS returned_items,\n  COUNT(*) AS total_items,\n  SAFE_DIVIDE(COUNTIF(oi.status = 'Returned'), COUNT(*)) AS return_rate\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY p.department\nORDER BY return_rate DESC\nLIMIT 100",
+    "report": "Return rates are nearly identical by department: Women is 10.1% (9,155 of 91,015 items) and Men is 10.0% (9,140 of 91,348 items).\n\nSo what: Returns are balanced across departments, so no single department stands out as a major return driver."
+  },
+  {
+    "question": "How many customers do we have per country? Top 10.",
+    "sql": "SELECT\n  country,\n  COUNT(*) AS customer_count\nFROM `bigquery-public-data.thelook_ecommerce.users`\nGROUP BY country\nORDER BY customer_count DESC, country\nLIMIT 10;",
+    "report": "Top 10 countries by customer count are: China 33,875; United States 22,606; Brasil 14,531; South Korea 5,242; France 4,690; United Kingdom 4,578; Germany 4,221; Spain 4,107; Japan 2,493; Australia 2,170.\n\nSo what: China and the United States together account for the largest share of customers, so they should be the primary focus for sales and retention efforts."
+  },
+  {
+    "question": "Which countries generate the most revenue?",
+    "sql": "SELECT\n  u.country,\n  SUM(oi.sale_price) AS total_revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.users` AS u\n  ON oi.user_id = u.id\nGROUP BY u.country\nORDER BY total_revenue DESC\nLIMIT 100;",
+    "report": "China generates the most revenue at 3,682,073.68, followed by the United States at 2,452,413.90 and Brasil at 1,585,101.64. Next are South Korea at 555,029.92, France at 515,640.30, and the United Kingdom at 493,661.70. Spain, Germany, and Japan trail behind those top markets.\n\nSo what: Revenue is heavily concentrated in China and the United States, so those markets deserve the most attention for growth and retention."
+  },
+  {
+    "question": "What are the top 10 US states by number of customers?",
+    "sql": "SELECT\n  state,\n  COUNT(*) AS customer_count\nFROM `bigquery-public-data.thelook_ecommerce.users`\nWHERE country = 'United States'\nGROUP BY state\nORDER BY customer_count DESC, state\nLIMIT 10",
+    "report": "The top 10 US states by customer count are: California (3,778), Texas (2,475), Florida (1,651), New York (1,351), Illinois (908), Georgia (855), North Carolina (821), Arizona (684), Pennsylvania (636), and Virginia (617).\n\nSo what: California and Texas lead by a wide margin, so they are the biggest states to prioritize for customer-focused efforts."
+  },
+  {
+    "question": "Which cities have the most customers? Top 10.",
+    "sql": "SELECT\n  city,\n  COUNT(*) AS customer_count\nFROM `bigquery-public-data.thelook_ecommerce.users`\nGROUP BY city\nORDER BY customer_count DESC, city\nLIMIT 10",
+    "report": "Top 10 cities by customer count are: Shanghai 2,429; Beijing 2,069; Seoul 1,442; Shenzhen 1,352; null 950; Dongguan 939; Tokyo 867; Chengdu 854; New York 800; Foshan 739.\n\nShanghai leads by a clear margin, with Beijing second and Seoul third. The \u201cnull\u201d city entry is ranked fifth, which likely means some customer locations are missing or uncategorized.\n\nSo what: Focus growth and service efforts first on Shanghai and Beijing, and fix the missing-city data to improve reporting accuracy."
+  },
+  {
+    "question": "What is the average order value by country?",
+    "sql": "SELECT\n  u.country,\n  AVG(o.num_of_item) AS average_order_value\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.users` AS u\n  ON o.user_id = u.id\nGROUP BY u.country\nORDER BY average_order_value DESC\nLIMIT 100;",
+    "report": "Average order value by country is highest in **Deutschland (2.50)** and **Austria (1.75)**. Mid-range values include **Spain (1.48)**, **Colombia (1.48)**, **Belgium (1.47)**, **South Korea (1.46)**, **United States (1.46)**, **United Kingdom (1.46)**, and **Brasil (1.45)**. Lower values are **China (1.45)**, **France (1.45)**, **Australia (1.45)**, **Poland (1.44)**, **Japan (1.44)**, and **Germany (1.43)**. The lowest is **Espa\u00f1a (1.00)**.  \nSo what: order value varies by country, with Deutschland standing out well above the rest."
+  },
+  {
+    "question": "How many orders come from each country? Top 10.",
+    "sql": "SELECT\n  u.country,\n  COUNT(DISTINCT o.order_id) AS order_count\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.users` AS u\n  ON o.user_id = u.id\nGROUP BY u.country\nORDER BY order_count DESC\nLIMIT 10;",
+    "report": "Top 10 countries by order count are: China 42,781; United States 28,231; Brasil 18,218; South Korea 6,459; France 5,872; United Kingdom 5,665; Germany 5,229; Spain 5,219; Japan 3,155; Australia 2,736.\n\nSo what: Orders are heavily concentrated in China and the United States, so those markets deserve the most attention."
+  },
+  {
+    "question": "What is revenue by day of week?",
+    "sql": "SELECT\n  FORMAT_DATE('%A', DATE(oi.created_at)) AS day_of_week,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nGROUP BY day_of_week\nORDER BY CASE day_of_week\n  WHEN 'Sunday' THEN 1\n  WHEN 'Monday' THEN 2\n  WHEN 'Tuesday' THEN 3\n  WHEN 'Wednesday' THEN 4\n  WHEN 'Thursday' THEN 5\n  WHEN 'Friday' THEN 6\n  WHEN 'Saturday' THEN 7\nEND\nLIMIT 100",
+    "report": "Revenue is highest on Monday at 1,600,016.61. Then Sunday 1,576,264.01, Thursday 1,562,165.71, Friday 1,543,967.94, Saturday 1,534,870.52, Wednesday 1,522,476.74, and Tuesday is lowest at 1,512,854.54.\n\nSo what: Revenue is fairly even across the week, with a modest Monday peak and Tuesday the weakest day."
+  },
+  {
+    "question": "How has the number of new customers changed month over month this year?",
+    "sql": "SELECT\n  month,\n  new_customers,\n  new_customers - LAG(new_customers) OVER (ORDER BY month) AS mom_change\nFROM (\n  SELECT\n    DATE_TRUNC(DATE(created_at), MONTH) AS month,\n    COUNT(*) AS new_customers\n  FROM `bigquery-public-data.thelook_ecommerce.users`\n  WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\n  GROUP BY month\n)\nORDER BY month\nLIMIT 100",
+    "report": "New customer counts were mostly stable from January to May, then surged in June. January had 1,084 new customers, February fell to 1,003 (-81), March rebounded to 1,072 (+69), April dipped to 1,048 (-24), and May rose to 1,119 (+71). June jumped to 3,326, up 2,207 month over month. So what: the big June spike is the key shift this year and warrants investigation."
+  },
+  {
+    "question": "What is the revenue trend by quarter?",
+    "sql": "SELECT\n  CONCAT(CAST(EXTRACT(YEAR FROM oi.created_at) AS STRING), '-Q', CAST(EXTRACT(QUARTER FROM oi.created_at) AS STRING)) AS quarter,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nGROUP BY quarter\nORDER BY quarter\nLIMIT 100",
+    "report": "Revenue rises every quarter in the data, with no declines. It grows from 7,228.40 in 2019-Q1 to 16,041.74 in 2019-Q2, 45,748.00 in 2019-Q4, and 100,496.45 in 2020-Q4. Growth continues through 2024-Q4 at 563,855.60, then accelerates sharply in 2025, reaching 912,076.29 in 2025-Q4 and 1,728,051.76 in 2026-Q2. So what: revenue is consistently strong and is speeding up in the most recent quarters."
+  },
+  {
+    "question": "Which weekday has the most orders?",
+    "sql": "SELECT\n  EXTRACT(DAYOFWEEK FROM created_at) AS weekday_num,\n  CASE EXTRACT(DAYOFWEEK FROM created_at)\n    WHEN 1 THEN 'Sunday'\n    WHEN 2 THEN 'Monday'\n    WHEN 3 THEN 'Tuesday'\n    WHEN 4 THEN 'Wednesday'\n    WHEN 5 THEN 'Thursday'\n    WHEN 6 THEN 'Friday'\n    WHEN 7 THEN 'Saturday'\n  END AS weekday_name,\n  COUNT(*) AS order_count\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nGROUP BY weekday_num, weekday_name\nORDER BY order_count DESC\nLIMIT 1;",
+    "report": "Monday has the most orders, with 18,835 orders.\n\nSo what: Monday is the peak weekday, so staffing, inventory, and promotions should be strongest at the start of the week."
+  },
+  {
+    "question": "How many orders were delivered each month this year?",
+    "sql": "SELECT\n  FORMAT_TIMESTAMP('%Y-%m', delivered_at) AS month,\n  COUNT(*) AS delivered_orders\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE delivered_at IS NOT NULL\n  AND EXTRACT(YEAR FROM delivered_at) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY month\nORDER BY month\nLIMIT 100",
+    "report": "Delivered orders by month this year were: January 1,439; February 1,335; March 1,577; April 1,712; May 2,012; June 3,399.\n\nDelivered volume dipped in February, then rose steadily through June, with the biggest jump from May to June.\n\nSo what: fulfillment improved sharply in late spring, so June\u2019s level is a useful benchmark for staffing and inventory planning."
+  },
+  {
+    "question": "What is the age distribution of our customers?",
+    "sql": "SELECT\n  age,\n  COUNT(*) AS customer_count\nFROM `bigquery-public-data.thelook_ecommerce.users`\nWHERE age IS NOT NULL\nGROUP BY age\nORDER BY age\nLIMIT 100",
+    "report": "Customer counts are very even across ages 12\u201341, mostly ranging from about 1,625 to 1,807 per age. The smallest group is age 33 with 1,625 customers; the largest is age 39 with 1,807. Counts are strongest in the late 20s to late 30s, especially ages 35\u201339, where each age has at least 1,734 customers. So what: your customer base is broad and balanced, with a slight concentration in the late-30s range."
+  },
+  {
+    "question": "What is the average age of our customers?",
+    "sql": "SELECT AVG(age) AS average_age\nFROM `bigquery-public-data.thelook_ecommerce.users`;",
+    "report": "The average age of our customers is **41.0 years**.  \n\nSo what: Our customer base is centered around early-forties adults, which can help guide product, marketing, and messaging choices."
+  },
+  {
+    "question": "How does revenue split between male and female customers?",
+    "sql": "SELECT\n  o.gender,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.orders` o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` oi\n  ON o.order_id = oi.order_id\nGROUP BY o.gender\nORDER BY revenue DESC\nLIMIT 100",
+    "report": "Male customers generated 53.1% of revenue, while female customers generated 46.9%.\n\n- Male revenue: 5,759,847.99\n- Female revenue: 5,092,768.09\n- Total revenue: 10,852,616.08\n\nThe revenue gap is 667,079.91 in favor of male customers. So what: revenue is fairly balanced, but male customers contribute a modestly larger share."
+  },
+  {
+    "question": "What is the average spend by gender?",
+    "sql": "SELECT\n  o.gender,\n  AVG(oi.sale_price) AS average_spend\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON o.order_id = oi.order_id\nGROUP BY o.gender\nORDER BY o.gender\nLIMIT 100",
+    "report": "Women (F) average spend is 55.96, while men (M) average spend is 63.05. Men spend 7.10 more on average than women, based on the data provided. \n\nSo what: If you want to grow revenue, male shoppers currently show the higher average spend, but there may be opportunity to lift female spend."
+  },
+  {
+    "question": "How many customers are in each age group (under 25, 25-40, 40-60, 60+)?",
+    "sql": "SELECT\n  CASE\n    WHEN age < 25 THEN 'under 25'\n    WHEN age BETWEEN 25 AND 40 THEN '25-40'\n    WHEN age BETWEEN 41 AND 60 THEN '40-60'\n    ELSE '60+'\n  END AS age_group,\n  COUNT(*) AS customer_count\nFROM `bigquery-public-data.thelook_ecommerce.users`\nGROUP BY age_group\nORDER BY CASE age_group\n  WHEN 'under 25' THEN 1\n  WHEN '25-40' THEN 2\n  WHEN '40-60' THEN 3\n  WHEN '60+' THEN 4\nEND\nLIMIT 100;",
+    "report": "Customer counts by age group are: under 25: 21,809; 25\u201340: 27,426; 40\u201360: 33,733; 60+: 17,032. The largest group is 40\u201360, and the smallest is 60+.  \n\nSo what: Focus the biggest share of marketing and service effort on the 40\u201360 segment, while tailoring smaller but important offers for 60+ and under-25 customers."
+  },
+  {
+    "question": "Which gender places more orders?",
+    "sql": "SELECT\n  gender,\n  COUNT(*) AS order_count\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nGROUP BY gender\nORDER BY order_count DESC\nLIMIT 2;",
+    "report": "Female customers place slightly more orders than male customers: 62,761 orders from women versus 62,733 from men, a difference of 28 orders.\n\nSo what: Order volume is essentially balanced by gender, so marketing should not assume a meaningful gender skew."
+  },
+  {
+    "question": "How many customers come from each traffic source?",
+    "sql": "SELECT\n  traffic_source,\n  COUNT(*) AS customer_count\nFROM `bigquery-public-data.thelook_ecommerce.users`\nGROUP BY traffic_source\nORDER BY customer_count DESC\nLIMIT 100",
+    "report": "Search brings the most customers at 70,051, followed by Organic at 15,172. Facebook contributes 5,903 customers, Email 4,861, and Display 4,013.\n\nSo what: Search is the dominant acquisition channel, so protecting and scaling it should have the biggest impact."
+  },
+  {
+    "question": "Which traffic source brings the highest spending customers?",
+    "sql": "SELECT\n  u.traffic_source,\n  SUM(oi.sale_price) AS total_spending\nFROM `bigquery-public-data.thelook_ecommerce.users` AS u\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON u.id = oi.user_id\nGROUP BY u.traffic_source\nORDER BY total_spending DESC\nLIMIT 100",
+    "report": "Search brings the highest spending customers, with total spending of 7,625,215.35. Organic is a distant second at 1,625,092.09, followed by Facebook at 628,598.20, Email at 541,617.74, and Display at 432,092.70.\n\nSo what: prioritize Search if the goal is to attract the highest-value customers."
+  },
+  {
+    "question": "What is the revenue by traffic source?",
+    "sql": "SELECT\n  u.traffic_source,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.users` u\n  ON oi.user_id = u.id\nGROUP BY u.traffic_source\nORDER BY revenue DESC;",
+    "report": "Revenue by traffic source is led by Search at 7,625,215.35, followed by Organic at 1,625,092.09, Facebook at 628,598.20, Email at 541,617.74, and Display at 432,092.70.\n\nSo what: Search is the clear revenue driver, generating far more than all other sources combined."
+  },
+  {
+    "question": "What share of customers come from each traffic source?",
+    "sql": "SELECT\n  traffic_source,\n  COUNT(*) AS customer_count,\n  SAFE_DIVIDE(COUNT(*), SUM(COUNT(*)) OVER ()) AS share_of_customers\nFROM `bigquery-public-data.thelook_ecommerce.users`\nGROUP BY traffic_source\nORDER BY customer_count DESC\nLIMIT 100",
+    "report": "Most customers come from Search: 70.051% (70,051 customers). Organic contributes 15.172% (15,172), Facebook 5.903% (5,903), Email 4.861% (4,861), and Display 4.013% (4,013).\n\nSo what: Search is by far the main acquisition channel, so any improvement there will have the biggest impact."
+  },
+  {
+    "question": "What is the average time from order to delivery in days?",
+    "sql": "SELECT\n  AVG(TIMESTAMP_DIFF(delivered_at, created_at, SECOND)) / 86400.0 AS average_time_from_order_to_delivery_days\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE delivered_at IS NOT NULL\nLIMIT 100",
+    "report": "The average time from order to delivery is **4.01 days**.\n\nSo what: orders are typically delivered in about 4 days, which is a useful benchmark for customer expectations and delivery performance."
+  },
+  {
+    "question": "What is the average shipping time in days by month this year?",
+    "sql": "SELECT\n  DATE_TRUNC(DATE(created_at), MONTH) AS month,\n  AVG(TIMESTAMP_DIFF(shipped_at, created_at, HOUR) / 24.0) AS avg_shipping_time_days\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE created_at >= TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), YEAR)\n  AND shipped_at IS NOT NULL\nGROUP BY month\nORDER BY month\nLIMIT 100",
+    "report": "Average shipping time this year is very steady, ranging from 1.445 to 1.492 days by month. By month: Jan 1.455 days, Feb 1.487, Mar 1.445, Apr 1.490, May 1.461, and Jun 1.492.\n\nSo what: shipping speed is consistent, so there\u2019s no urgent delivery issue, but June is the slowest month so far."
+  },
+  {
+    "question": "How many orders are still not delivered?",
+    "sql": "SELECT COUNT(*) AS not_delivered_orders\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE delivered_at IS NULL\nLIMIT 100",
+    "report": "There are **81,606 orders** still not delivered.\n\nThis is the full count shown in the data, so the current backlog of undelivered orders is 81,606.\n\n**So what:** This is the number to focus on for delivery follow-up and service recovery."
+  },
+  {
+    "question": "What is the distribution of order statuses?",
+    "sql": "SELECT\n  status,\n  COUNT(*) AS status_count\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nGROUP BY status\nORDER BY status_count DESC\nLIMIT 100",
+    "report": "Order statuses are led by Shipped at 37,684, followed by Complete at 31,353, Processing at 25,256, Cancelled at 18,666, and Returned at 12,535. Shipped is the largest share, while Returned is the smallest.\n\nSo what: Most orders are moving through fulfillment successfully, but the combined Cancelled and Returned volume is still significant and worth monitoring."
+  },
+  {
+    "question": "What is the average time from order to shipment?",
+    "sql": "SELECT\n  AVG(TIMESTAMP_DIFF(shipped_at, created_at, SECOND)) / 3600.0 AS avg_hours_from_order_to_shipment\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE shipped_at IS NOT NULL\nLIMIT 100",
+    "report": "The average time from order to shipment is 36.0 hours, which is about 1.5 days.\n\nSo what: orders are typically leaving the warehouse within two days, which is a good benchmark for fulfillment speed."
+  },
+  {
+    "question": "What is the median order value?",
+    "sql": "SELECT\n  APPROX_QUANTILES(order_value, 2)[OFFSET(1)] AS median_order_value\nFROM (\n  SELECT\n    o.order_id,\n    SUM(oi.sale_price) AS order_value\n  FROM `bigquery-public-data.thelook_ecommerce.orders` AS o\n  JOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n    ON o.order_id = oi.order_id\n  GROUP BY o.order_id\n)",
+    "report": "The median order value is **$55.38**.\n\nSo what: Half of all orders are below $55.38 and half are above it, making this a useful benchmark for typical order size."
+  },
+  {
+    "question": "What is the standard deviation of order value?",
+    "sql": "SELECT STDDEV(order_value) AS order_value_stddev\nFROM (\n  SELECT order_id, SUM(sale_price) AS order_value\n  FROM `bigquery-public-data.thelook_ecommerce.order_items`\n  GROUP BY order_id\n)",
+    "report": "The standard deviation of order value is **93.36**.\n\nThis means order values typically vary by about 93.36 units around the average, indicating moderate spread in order sizes.\n\n**So what:** Order values are fairly variable, so planning for demand and revenue should account for noticeable swings."
+  },
+  {
+    "question": "How many orders were placed each day this month?",
+    "sql": "SELECT\n  DATE(created_at) AS order_date,\n  COUNT(*) AS order_count\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE DATE(created_at) >= DATE_TRUNC(CURRENT_DATE(), MONTH)\nGROUP BY order_date\nORDER BY order_date\nLIMIT 100",
+    "report": "Orders placed each day in June 2026 were: Jun 1 207, Jun 2 222, Jun 3 201, Jun 4 237, Jun 5 209, Jun 6 224, Jun 7 242, Jun 8 230, Jun 9 232, Jun 10 259, Jun 11 227, Jun 12 235, Jun 13 242, Jun 14 250, Jun 15 270, Jun 16 293, Jun 17 326, Jun 18 440, Jun 19 585, Jun 20 806, Jun 21 1,116, Jun 22 1,796, Jun 23 43. So what: orders rose sharply in the second half of the month, peaking on June 22."
+  },
+  {
+    "question": "What is the average daily revenue this year?",
+    "sql": "SELECT AVG(daily_revenue) AS average_daily_revenue\nFROM (\n  SELECT\n    DATE(created_at) AS order_date,\n    SUM(sale_price) AS daily_revenue\n  FROM `bigquery-public-data.thelook_ecommerce.order_items`\n  WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\n  GROUP BY order_date\n) t",
+    "report": "Average daily revenue this year is **$15,781.73**.\n\nThis figure comes directly from the provided data row, which reports an average daily revenue of 15781.732106205438.\n\nSo what: At this pace, daily sales are generating about **$15.8K** on average this year."
+  },
+  {
+    "question": "What was the highest revenue day all time?",
+    "sql": "SELECT\n  DATE(o.created_at) AS revenue_day,\n  SUM(oi.sale_price) AS total_revenue\nFROM `bigquery-public-data.thelook_ecommerce.orders` o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` oi\n  ON o.order_id = oi.order_id\nGROUP BY revenue_day\nORDER BY total_revenue DESC\nLIMIT 1",
+    "report": "The highest revenue day in the data provided was 2026-06-22, with total revenue of 157,676.79.\n\nSo what: This is the peak day to benchmark against when checking what drove top performance."
+  },
+  {
+    "question": "What was the lowest revenue day this year?",
+    "sql": "SELECT\n  DATE(o.created_at) AS order_date,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON o.order_id = oi.order_id\nWHERE EXTRACT(YEAR FROM o.created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY order_date\nORDER BY revenue ASC, order_date ASC\nLIMIT 1",
+    "report": "The lowest revenue day this year was 2026-06-23, with revenue of 3,412.00.\n\nSo what: This is the current low point to benchmark against when checking for dips in sales."
+  },
+  {
+    "question": "Which weekdays generate the most revenue?",
+    "sql": "SELECT\n  FORMAT_DATE('%A', DATE(o.created_at)) AS weekday,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON o.order_id = oi.order_id\nGROUP BY weekday\nORDER BY revenue DESC\nLIMIT 100",
+    "report": "Monday generates the most revenue at 1,631,472.20. The next highest weekdays are Sunday at 1,588,001.84 and Saturday at 1,546,892.01. Thursday follows at 1,541,296.36, then Friday at 1,532,794.46, Wednesday at 1,515,944.67, and Tuesday is lowest at 1,496,214.53. \n\nSo what: Focus promotions, staffing, and inventory planning on Monday, Sunday, and Saturday to capture the strongest demand."
+  },
+  {
+    "question": "How many orders were placed in each hour of the day?",
+    "sql": "SELECT\n  EXTRACT(HOUR FROM created_at) AS hour_of_day,\n  COUNT(*) AS order_count\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nGROUP BY hour_of_day\nORDER BY hour_of_day\nLIMIT 24",
+    "report": "Orders were fairly steady across the day, ranging from 5,119 to 5,422. By hour: 0=5,203; 1=5,119; 2=5,129; 3=5,162; 4=5,155; 5=5,161; 6=5,132; 7=5,240; 8=5,181; 9=5,282; 10=5,215; 11=5,304; 12=5,170; 13=5,206; 14=5,235; 15=5,219; 16=5,226; 17=5,325; 18=5,244; 19=5,206; 20=5,361; 21=5,422; 22=5,248; 23=5,349. So what: demand peaks in the late evening, especially 20:00\u201323:00."
+  },
+  {
+    "question": "What is the average items per order by month this year?",
+    "sql": "SELECT\n  DATE_TRUNC(DATE(created_at), MONTH) AS month,\n  AVG(num_of_item) AS avg_items_per_order\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY month\nORDER BY month\nLIMIT 100",
+    "report": "Average items per order this year has been very steady, ranging from 1.44 to 1.47. By month: Jan 1.47, Feb 1.46, Mar 1.45, Apr 1.44, May 1.45, and Jun 1.46.\n\nSo what: order size is stable, so any growth focus should come from more orders or higher-value items, not bigger baskets."
+  },
+  {
+    "question": "Which product names have the highest average unit price?",
+    "sql": "SELECT\n  p.name,\n  AVG(oi.sale_price) AS avg_unit_price\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY p.name\nORDER BY avg_unit_price DESC\nLIMIT 100",
+    "report": "The highest average unit price is tied between **Alpha Industries Rip Stop Short** and **Darla**, both at **999.0**. Next is **Woolrich Arctic Parka DF** at **990.0**, followed by **Nobis Yatesy Parka** at **950.0**. A large group sits at **903.0**, including several The North Face and Nike/Jordan items.\n\nSo what: the top-priced products are concentrated in premium outerwear and branded apparel, with two items clearly leading the pack."
+  },
+  {
+    "question": "What are the top 10 products by profit?",
+    "sql": "SELECT\n  p.id AS product_id,\n  p.name AS product_name,\n  p.brand,\n  p.category,\n  SUM(oi.sale_price - p.cost) AS total_profit\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` AS p\n  ON oi.product_id = p.id\nGROUP BY product_id, product_name, brand, category\nORDER BY total_profit DESC\nLIMIT 10",
+    "report": "Top 10 products by profit are: 1) ASCIS Cushion Low Socks (Pack of 3) \u2014 $5,820.74; 2) Canada Goose Men's The Chateau Jacket \u2014 $5,731.08; 3) Nobis Yatesy Parka \u2014 $5,681.00; 4) Canada Goose Women's Mystique \u2014 $5,164.50; 5) Darla \u2014 $4,755.24; 6) Robert Graham Men's Barbican Velvet Blazer \u2014 $4,715.69; 7) Mens Nike AirJordan Varsity Hoodie Jacket Grey / Black \u2014 $4,445.47; 8) Canada Goose Women's Solaris \u2014 $4,380.59; 9) The North Face Nuptse 2 Jacket Deep Water Blue Mens \u2014 $4,283.83; 10) The North Face Women's S-XL Oso Jacket \u2014 $4,197.14. So what: outerwear dominates the highest-profit items."
+  },
+  {
+    "question": "Which categories have the highest average profit per item?",
+    "sql": "SELECT\n  p.category,\n  AVG(oi.sale_price - p.cost) AS avg_profit_per_item\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` AS p\n  ON oi.product_id = p.id\nGROUP BY p.category\nORDER BY avg_profit_per_item DESC\nLIMIT 100;",
+    "report": "Outerwear & Coats has the highest average profit per item at 81.82, followed by Suits & Sport Coats at 75.86 and Blazers & Jackets at 58.92. The next strongest categories are Suits at 46.56, Dresses at 46.38, and Jeans at 45.55.\n\nSo what: premium outerwear and formalwear are the most profitable items per unit, so prioritize inventory and promotions there."
+  },
+  {
+    "question": "What is the average discount per product?",
+    "sql": "SELECT\n  p.id AS product_id,\n  p.name AS product_name,\n  AVG(p.retail_price - oi.sale_price) AS average_discount\nFROM `bigquery-public-data.thelook_ecommerce.order_items` AS oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` AS p\n  ON oi.product_id = p.id\nGROUP BY product_id, product_name\nORDER BY average_discount DESC\nLIMIT 100;",
+    "report": "The average discount per product is 0.0 for every product in the data. All 30 products listed show an average_discount of 0.0, so the overall average discount per product is also 0.0.\n\nSo what: There\u2019s no discounting activity in this set, so pricing appears fully regular price."
+  },
+  {
+    "question": "Which products are discounted the most on average?",
+    "sql": "SELECT\n  p.id AS product_id,\n  p.name AS product_name,\n  p.category,\n  p.brand,\n  p.retail_price,\n  AVG(p.retail_price - oi.sale_price) AS avg_discount_amount,\n  AVG(SAFE_DIVIDE(p.retail_price - oi.sale_price, p.retail_price)) AS avg_discount_rate\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY product_id, product_name, category, brand, retail_price\nORDER BY avg_discount_amount DESC\nLIMIT 100;",
+    "report": "None of these products are discounted on average. Every listed item has an avg_discount_amount of 0.0 and an avg_discount_rate of 0.0, so there\u2019s no product that stands out as \u201cmost discounted.\u201d\n\nSo what: If you want discount leaders, this dataset shows no current average markdowns to act on."
+  },
+  {
+    "question": "How many products are there in each brand and category?",
+    "sql": "SELECT\n  brand,\n  category,\n  COUNT(*) AS product_count\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY brand, category\nORDER BY product_count DESC, brand, category\nLIMIT 100;",
+    "report": "Here are the product counts by brand and category: Speedo, Swim: 191; Motherhood Maternity, Maternity: 180; Allegra K, Blazers & Jackets: 158; Levi's, Jeans: 155; 7 For All Mankind, Jeans: 145; Wrangler, Jeans: 133; Allegra K, Dresses: 126; Allegra K, Fashion Hoodies & Sweatshirts: 123; Carhartt, Outerwear & Coats: 113; Champion, Active: 113; Quiksilver, Swim: 102; Ray-Ban, Accessories: 102; Allegra K, Tops & Tees: 100; adidas, Active: 100; Calvin Klein, Underwear: 96; Allegra K, Shorts: 95; Dockers, Pants: 95; Hanes, Underwear: 94; Nautica, Sleep & Lounge: 92; Joe's Jeans, Jeans: 88; Allegra K, Pants: 84; Lucky Brand, Jeans: 84; Columbia, Outerwear & Coats: 83; Not Your Daughter's Jeans, Jeans: 83; Diesel, Jeans: 81; True Religion, Jeans: 79; Bali, Intimates: 72; O'Neill, Swim: 71; Fox, Fashion Hoodies & Sweatshirts: 70; Hanes, Intimates: 69.  \nSo what: Jeans and Swim dominate the list, with Allegra K appearing across the most categories."
+  },
+  {
+    "question": "What are the top 10 brands by product count?",
+    "sql": "SELECT\n  brand,\n  COUNT(*) AS product_count\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY brand\nORDER BY product_count DESC, brand\nLIMIT 10",
+    "report": "The top 10 brands by product count are: Allegra K (1,034), Calvin Klein (497), Carhartt (388), Hanes (308), Volcom (292), Nautica (263), Levi's (259), Quiksilver (257), Tommy Hilfiger (251), and Columbia (236).\n\nSo what: Allegra K leads by a wide margin, with more than double the products of the #2 brand."
+  },
+  {
+    "question": "Which departments have the widest price ranges?",
+    "sql": "SELECT\n  department,\n  MIN(retail_price) AS min_retail_price,\n  MAX(retail_price) AS max_retail_price,\n  MAX(retail_price) - MIN(retail_price) AS price_range\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY department\nORDER BY price_range DESC\nLIMIT 100",
+    "report": "Men has the widest price range at 997.5, from 1.5 to 999.0. Women is next at 902.98, from 0.02 to 903.0. Both departments span very large price gaps, but Men is wider by about 94.52.\n\nSo what: Men has the broadest assortment of price points, with Women close behind."
+  },
+  {
+    "question": "What is the average cost-to-price ratio by category?",
+    "sql": "SELECT\n  category,\n  AVG(cost / NULLIF(retail_price, 0)) AS avg_cost_to_price_ratio\nFROM `bigquery-public-data.thelook_ecommerce.products`\nGROUP BY category\nORDER BY category\nLIMIT 100;",
+    "report": "Average cost-to-price ratios by category range from 0.3800 to 0.6183. Lowest are Blazers & Jackets (0.3800), Skirts (0.3998), and Suits & Sport Coats (0.4007). Highest are Clothing Sets (0.6183), Suits (0.6046), and Socks (0.6023). Most categories sit around 0.40\u20130.56, including Accessories (0.4007), Dresses (0.4513), and Tops & Tees (0.5601). So what: categories near 0.60 have tighter margins than those near 0.38."
+  },
+  {
+    "question": "What are the top 10 customers by order count this year?",
+    "sql": "SELECT\n  o.user_id,\n  COUNT(DISTINCT o.order_id) AS order_count\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nWHERE EXTRACT(YEAR FROM o.created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY o.user_id\nORDER BY order_count DESC, o.user_id\nLIMIT 10",
+    "report": "The top 10 customers by order count this year are tied at 4 orders each: user_id 292, 428, 590, 605, 886, 922, 971, 1168, 1357, and 1467.\n\nSo what: these customers are equally your highest-frequency buyers this year, so they\u2019re all prime targets for retention and upsell."
+  },
+  {
+    "question": "What is the average spend per customer in each country?",
+    "sql": "SELECT\n  u.country,\n  AVG(customer_spend) AS average_spend_per_customer\nFROM (\n  SELECT\n    user_id,\n    SUM(sale_price) AS customer_spend\n  FROM `bigquery-public-data.thelook_ecommerce.order_items`\n  GROUP BY user_id\n) cs\nJOIN `bigquery-public-data.thelook_ecommerce.users` u\n  ON cs.user_id = u.id\nGROUP BY u.country\nORDER BY average_spend_per_customer DESC\nLIMIT 100;",
+    "report": "Average spend per customer is highest in Austria at 238.98, followed by Deutschland at 185.25. Mid-range countries cluster around 135\u2013145, including Belgium 144.35, France 137.43, Spain 136.16, Australia 136.03, China 135.97, United States 135.87, Japan 135.21, Brasil 135.19, and United Kingdom 135.06. Lower values include South Korea 133.01, Poland 130.16, Germany 128.82, and Colombia 124.05. Espa\u00f1a is the lowest at 26.45.  \n\nSo what: Austria and Deutschland are clear high-value markets, while Espa\u00f1a looks like a major outlier worth checking."
+  },
+  {
+    "question": "Which customers have the highest average order value?",
+    "sql": "SELECT\n  o.user_id,\n  u.first_name,\n  u.last_name,\n  AVG(oi.sale_price) AS average_order_value\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON o.order_id = oi.order_id\nJOIN `bigquery-public-data.thelook_ecommerce.users` AS u\n  ON o.user_id = u.id\nGROUP BY\n  o.user_id,\n  u.first_name,\n  u.last_name\nORDER BY average_order_value DESC\nLIMIT 100;",
+    "report": "The highest average order value is $999.00, held by customer IDs 32204 and 85058. Next is user 46789 at $950.00. A large group of customers ties at $903.00: 33253, 72840, 83793, 22311, 17730, 30188, 48500, 74699, 73274, 96335, 82461, 77579, 89723, 91196, 2635, 38697, 21211, 40813, 56009, 59616, 24589, 48572, and 2417. So what: these top customers are prime targets for premium offers and loyalty outreach."
+  },
+  {
+    "question": "How many customers joined each month this year?",
+    "sql": "SELECT\n  DATE_TRUNC(DATE(created_at), MONTH) AS join_month,\n  COUNT(*) AS customers_joined\nFROM `bigquery-public-data.thelook_ecommerce.users`\nWHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE())\nGROUP BY join_month\nORDER BY join_month\nLIMIT 100;",
+    "report": "Customers joined by month this year were: January 1,084; February 1,003; March 1,072; April 1,048; May 1,119; and June 3,326.\n\nJune was the standout month, with nearly three times the signups of any prior month this year.\n\nSo what: customer growth accelerated sharply in June, which is worth investigating for the driver behind the spike."
+  },
+  {
+    "question": "What is the retention rate of customers after their first order?",
+    "sql": "WITH first_orders AS (\n  SELECT\n    user_id,\n    MIN(DATE(created_at)) AS first_order_date\n  FROM `bigquery-public-data.thelook_ecommerce.orders`\n  GROUP BY user_id\n),\nsubsequent_orders AS (\n  SELECT DISTINCT\n    o.user_id\n  FROM `bigquery-public-data.thelook_ecommerce.orders` o\n  JOIN first_orders f\n    ON o.user_id = f.user_id\n  WHERE DATE(o.created_at) > f.first_order_date\n)\nSELECT\n  COUNT(DISTINCT f.user_id) AS total_customers,\n  COUNT(DISTINCT s.user_id) AS retained_customers,\n  SAFE_DIVIDE(COUNT(DISTINCT s.user_id), COUNT(DISTINCT f.user_id)) AS retention_rate\nFROM first_orders f\nLEFT JOIN subsequent_orders s\n  ON f.user_id = s.user_id;",
+    "report": "The retention rate after customers\u2019 first order is **37.2%**. Out of **80,102** total customers, **29,812** were retained.\n\nSo what: about **3 in 10** first-time customers come back, so improving the first repeat purchase could lift growth significantly."
+  },
+  {
+    "question": "How many customers placed exactly two orders?",
+    "sql": "SELECT COUNT(*) AS customers_with_exactly_two_orders\nFROM (\n  SELECT user_id\n  FROM `bigquery-public-data.thelook_ecommerce.orders`\n  GROUP BY user_id\n  HAVING COUNT(*) = 2\n)",
+    "report": "19,968 customers placed exactly two orders.\n\nThis is the full count shown in the data, so nearly twenty thousand customers made exactly two purchases.\n\nSo what: that suggests a large group of repeat buyers, which could be targeted with loyalty or reactivation offers."
+  },
+  {
+    "question": "What is the repeat purchase rate by country?",
+    "sql": "SELECT\n  country,\n  COUNT(DISTINCT user_id) AS total_users,\n  COUNT(DISTINCT CASE WHEN order_count > 1 THEN user_id END) AS repeat_customers,\n  SAFE_DIVIDE(COUNT(DISTINCT CASE WHEN order_count > 1 THEN user_id END), COUNT(DISTINCT user_id)) AS repeat_purchase_rate\nFROM (\n  SELECT\n    u.country,\n    o.user_id,\n    COUNT(DISTINCT o.order_id) AS order_count\n  FROM `bigquery-public-data.thelook_ecommerce.orders` o\n  JOIN `bigquery-public-data.thelook_ecommerce.users` u\n    ON o.user_id = u.id\n  GROUP BY 1, 2\n)\nGROUP BY country\nORDER BY repeat_purchase_rate DESC\nLIMIT 100",
+    "report": "Repeat purchase rates by country: Austria 100.0% (3/3), Espa\u00f1a 50.0% (1/2), Colombia 46.2% (6/13), Belgium 39.4% (394/1,001), Japan 38.6% (776/2,009), China 38.3% (10,377/27,081), Australia 38.1% (668/1,754), Spain 37.7% (1,253/3,326), United States 37.4% (6,742/18,050), France 37.2% (1,396/3,752), South Korea 37.1% (1,550/4,173), Brasil 37.1% (4,349/11,725), Germany 36.7% (1,238/3,377), United Kingdom 36.1% (1,319/3,655), Poland 35.8% (64/179), Deutschland 0.0% (0/2). So what: repeat buying is fairly consistent around 36%\u201339% in the largest markets."
+  },
+  {
+    "question": "Which countries have the highest average customer spend?",
+    "sql": "SELECT\n  u.country,\n  AVG(o.num_of_item * oi.sale_price) AS avg_customer_spend\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` AS oi\n  ON o.order_id = oi.order_id\nJOIN `bigquery-public-data.thelook_ecommerce.users` AS u\n  ON o.user_id = u.id\nGROUP BY u.country\nORDER BY avg_customer_spend DESC\nLIMIT 100",
+    "report": "Deutschland has the highest average customer spend at 239.41, far above Austria at 121.40 and Belgium at 118.69. France (116.19), Australia (115.20), Spain (114.41), the United States (114.35), and the United Kingdom (114.11) are clustered closely behind. Japan is lower at 111.56, and Germany is 108.56. The lowest listed is Espa\u00f1a at 17.63. So what: spend is highest in Deutschland and then drops sharply, so that market stands out as the strongest revenue opportunity."
+  },
+  {
+    "question": "What is the return count by product category?",
+    "sql": "SELECT\n  p.category,\n  COUNT(*) AS return_count\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nWHERE oi.returned_at IS NOT NULL\nGROUP BY p.category\nORDER BY return_count DESC\nLIMIT 100",
+    "report": "Return counts by product category are highest in Jeans (1,348), Intimates (1,319), Tops & Tees (1,217), Sleep & Lounge (1,163), and Swim (1,148). Mid-range categories include Shorts (1,135), Fashion Hoodies & Sweatshirts (1,129), Sweaters (1,091), Accessories (1,028), and Active (948). The lowest are Clothing Sets (29), Jumpsuits & Rompers (95), and Suits (111). So what: returns are concentrated in a few core apparel categories, especially denim and intimates."
+  },
+  {
+    "question": "Which products are returned the most?",
+    "sql": "SELECT\n  p.id AS product_id,\n  p.name AS product_name,\n  COUNT(*) AS return_count\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nWHERE oi.returned_at IS NOT NULL\nGROUP BY product_id, product_name\nORDER BY return_count DESC, product_id\nLIMIT 100",
+    "report": "The most returned product is **Ozone Design Men's-Unisex Brogue Sock** with **6 returns**.  \n\nNext highest are **9 products with 5 returns each**: Just Sexy Women's Stretch Lace Padded Cup Babydoll; Women's Cashmere Mix Socks Made in Scotland; Badlands Cotton Zip Cardigan; Calvin Klein Jeans Men's Film Plaid Cargo Short; Carhartt Men's Quilted Flannel Lined Sandstone Santa Fe Jacket; Polo Ralph Lauren Bi-Swing Windbreaker Jacket Black; Men's New Sailor Boxer Square Cut Swimsuit by Gary Majdell Sport.; Speedo Men's Momentum Splice With Stretch Eboard Water Short; Rufskin Spencer - Red White and Blue Sunga Cut Swimming Trunks.  \n\nSo what: returns are concentrated in a small set of apparel and swimwear items."
+  },
+  {
+    "question": "What is the average return rate by brand?",
+    "sql": "SELECT\n  p.brand,\n  AVG(CASE WHEN oi.status = 'Returned' THEN 1 ELSE 0 END) AS average_return_rate\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.products` p\n  ON oi.product_id = p.id\nGROUP BY p.brand\nORDER BY average_return_rate DESC\nLIMIT 100",
+    "report": "Average return rates by brand range from 1.0 to 0.4. Online-Welcome is highest at 1.0. Most brands are tied at 0.5, including Emanuel by Emanuel Ungaro, FRYE, Rooster, LAST KISS, RocketWear, Anne Cole, Hold Your Haunches, Shirt Me Up, Bergama, Sperry Top-Sider, Body Trends, Adi Designs, Squish, Taylor, Super Mario, indigo, Power Trip, Fashion, Undrest, Rival, Amnesty International, Back to Back, and BDI. Sexy You Can Do and Yourtack are at 0.4285714285714286. Flattering Me, ArtsyClothingCompany, by Anew, and Flip are lowest at 0.4. So what: return rates are clustered, so brand-specific actions should focus first on Online-Welcome."
+  },
+  {
+    "question": "How many orders were returned within 7 days?",
+    "sql": "SELECT COUNT(*) AS returned_within_7_days\nFROM `bigquery-public-data.thelook_ecommerce.orders`\nWHERE returned_at IS NOT NULL\n  AND shipped_at IS NOT NULL\n  AND TIMESTAMP_DIFF(returned_at, shipped_at, DAY) <= 7;",
+    "report": "12,535 orders were returned within 7 days.\n\nSo what: This gives a clear count of early returns, which can help assess product fit, quality, or fulfillment issues."
+  },
+  {
+    "question": "What is the cancellation count by country?",
+    "sql": "SELECT\n  u.country,\n  COUNT(*) AS cancellation_count\nFROM `bigquery-public-data.thelook_ecommerce.orders` o\nJOIN `bigquery-public-data.thelook_ecommerce.users` u\n  ON o.user_id = u.id\nWHERE o.status = 'Cancelled'\nGROUP BY u.country\nORDER BY cancellation_count DESC\nLIMIT 100",
+    "report": "Cancellation counts by country are: China 6,229; United States 4,252; Brasil 2,633; South Korea 972; France 928; United Kingdom 892; Spain 802; Germany 779; Japan 456; Australia 410; Belgium 266; Poland 43; Colombia 2; Espa\u00f1a 1; Austria 1.\n\nSo what: cancellations are heavily concentrated in China, the United States, and Brasil, so those countries are the biggest priorities for investigation."
+  },
+  {
+    "question": "Which states have the most revenue? Top 10.",
+    "sql": "SELECT\n  u.state,\n  SUM(oi.sale_price) AS revenue\nFROM `bigquery-public-data.thelook_ecommerce.order_items` oi\nJOIN `bigquery-public-data.thelook_ecommerce.orders` o\n  ON oi.order_id = o.order_id\nJOIN `bigquery-public-data.thelook_ecommerce.users` u\n  ON o.user_id = u.id\nGROUP BY u.state\nORDER BY revenue DESC\nLIMIT 10",
+    "report": "Top 10 states by revenue are: Guangdong $566,999.02; England $432,425.56; California $406,945.00; Texas $274,207.72; Shanghai $262,542.60; S\u00e3o Paulo $244,304.38; Zhejiang $243,580.45; Beijing $222,132.69; Hebei $213,393.24; Jiangsu $201,537.14. Guangdong leads by a wide margin, with England and California next.  \n\nSo what: Revenue is heavily concentrated in a few states, so prioritizing these top markets should have the biggest impact."
+  },
+  {
+    "question": "How many customers are in each state?",
+    "sql": "SELECT\n  state,\n  COUNT(*) AS customer_count\nFROM `bigquery-public-data.thelook_ecommerce.users`\nGROUP BY state\nORDER BY customer_count DESC, state\nLIMIT 100",
+    "report": "Customers by state: Guangdong 5,261; England 3,997; California 3,778; Texas 2,475; Shanghai 2,451; Zhejiang 2,241; S\u00e3o Paulo 2,189; Beijing 2,081; Hebei 1,991; Jiangsu 1,848; Gyeonggi-do 1,723; Florida 1,651; Minas Gerais 1,568; Bahia 1,483; Seoul 1,442; Henan 1,429; Fujian 1,356; New York 1,351; Nordrhein-Westfalen 1,351; Shandong 1,305; Sichuan 1,248; Par\u00e1 1,217; Hunan 1,216; \u00cele-de-France 1,216; Hubei 1,163; Tokyo 1,158; Liaoning 1,043; Maranh\u00e3o 1,036; Cear\u00e1 924; Illinois 908.\n\nSo what: focus inventory and marketing on the highest-customer states first, especially Guangdong, England, and California."
+  },
+  {
+    "question": "What is the revenue per customer by country?",
+    "sql": "SELECT\n  u.country,\n  SUM(oi.sale_price) / COUNT(DISTINCT o.user_id) AS revenue_per_customer\nFROM `bigquery-public-data.thelook_ecommerce.orders` o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` oi\n  ON o.order_id = oi.order_id\nJOIN `bigquery-public-data.thelook_ecommerce.users` u\n  ON o.user_id = u.id\nGROUP BY u.country\nORDER BY revenue_per_customer DESC\nLIMIT 100;",
+    "report": "Revenue per customer is highest in Austria at 238.98, followed by Deutschland at 185.25 and Belgium at 144.35. Mid-range countries cluster around 135\u2013137: France 137.43, Spain 136.16, Australia 136.03, China 135.97, United States 135.87, Japan 135.21, Brasil 135.19, United Kingdom 135.06. Lower values include South Korea 133.01, Poland 130.16, Germany 128.82, Colombia 124.05, and Espa\u00f1a 26.45. So what: Austria and Deutschland are clear high-value markets, while Espa\u00f1a is a major underperformer."
+  },
+  {
+    "question": "Which cities generate the highest average order value?",
+    "sql": "SELECT\n  u.city,\n  AVG(oi.sale_price) AS avg_order_value\nFROM `bigquery-public-data.thelook_ecommerce.orders` o\nJOIN `bigquery-public-data.thelook_ecommerce.order_items` oi\n  ON o.order_id = oi.order_id\nJOIN `bigquery-public-data.thelook_ecommerce.users` u\n  ON o.user_id = u.id\nGROUP BY u.city\nORDER BY avg_order_value DESC\nLIMIT 100",
+    "report": "McLaren Vale has the highest average order value at 598.0, followed by Solli\u00e8s-Toucas at 500.5 and Olivenza at 479.0. Next are Villeneuve-la-Garenne at 453.5 and La Palma at 424.5.\n\nSo what: These cities are the strongest candidates for premium offers and VIP retention because they already spend the most per order."
+  },
+  {
+    "question": "What is the order count by traffic source?",
+    "sql": "SELECT\n  u.traffic_source,\n  COUNT(DISTINCT o.order_id) AS order_count\nFROM `bigquery-public-data.thelook_ecommerce.orders` AS o\nJOIN `bigquery-public-data.thelook_ecommerce.users` AS u\n  ON o.user_id = u.id\nGROUP BY u.traffic_source\nORDER BY order_count DESC\nLIMIT 100;",
+    "report": "Order count by traffic source: Search leads with 87,960 orders, followed by Organic with 19,032, Facebook with 7,364, Email with 6,163, and Display with 4,975.\n\nSo what: Search is the clear top acquisition channel, so it likely has the biggest impact on total orders."
+  },
+  {
+    "question": "Which traffic sources have the highest order conversion rate?",
+    "sql": "SELECT\n  u.traffic_source,\n  COUNT(DISTINCT o.order_id) AS total_orders,\n  COUNT(DISTINCT u.id) AS total_users,\n  SAFE_DIVIDE(COUNT(DISTINCT o.order_id), COUNT(DISTINCT u.id)) AS order_conversion_rate\nFROM `bigquery-public-data.thelook_ecommerce.users` AS u\nLEFT JOIN `bigquery-public-data.thelook_ecommerce.orders` AS o\n  ON u.id = o.user_id\nGROUP BY u.traffic_source\nORDER BY order_conversion_rate DESC, total_orders DESC\nLIMIT 100;",
+    "report": "Email has the highest order conversion rate at 1.2678%, followed by Search at 1.2557% and Organic at 1.2544%. Facebook is next at 1.2475%, and Display is lowest among these at 1.2397%.\n\nSo what: Email and Search are the strongest traffic sources for turning users into orders, though the gaps are small."
+  }
+]
