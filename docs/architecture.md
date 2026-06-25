@@ -17,7 +17,7 @@ Internal data-analysis chat assistant for non-technical retail managers. A manag
 - *Database structure* — "what tables/columns exist?" (answered from live schema).
 
 **What is implemented in code vs designed.**
-This prototype implements PII Masking, Resilience, Observability, and (partly) QA — plus the non-optional Hybrid Intelligence, Learning Loop, and Agility.
+The running prototype implements the core chat agent: guardrails, retrieval from a golden bucket, text-to-SQL, BigQuery dry-run validation and execution, bounded SQL self-correction, PII masking, analyst report generation, personas, per-user memory, local observability, provider-agnostic LLM configuration, retrieval evals, PII unit tests, and an offline graph smoke test. Production-only extensions are called out explicitly below: richer golden-bucket governance, keyphrase indexing, curated schema relationships, destructive-operation approval, stronger eval gates, managed observability, and managed persona/config storage.
 
 ---
 
@@ -27,10 +27,10 @@ This prototype implements PII Masking, Resilience, Observability, and (partly) Q
 
 ```mermaid
 flowchart TD
-    user([Manager]) -->|question| cli[CLI chat - rich]
-    cli --> graph
+    user([Manager]) -->|question| cli["CLI chat (rich)"]
+    cli --> agent_graph
 
-    subgraph graph[LangGraph agent]
+    subgraph agent_graph["LangGraph agent"]
         direction TB
         guard[guardrail] -->|allowed| retr[retrieve_trios]
         guard -->|blocked| done([refusal])
@@ -42,14 +42,14 @@ flowchart TD
         rep --> ans([answer])
     end
 
-    retr <--> qd[(Qdrant - embedded\ngolden bucket)]
-    gen --- llm[[LLM via init_chat_model\nOpenAI / Gemini / OpenRouter]]
+    retr <--> qd[("Qdrant embedded golden bucket")]
+    gen --- llm[["LLM via init_chat_model (OpenAI / Gemini / OpenRouter)"]]
     rep --- llm
     guard --- llm
-    exec <--> bq[(BigQuery\nthelook_ecommerce - read only)]
-    rep --- persona[/personas.yaml + memory\nLangGraph Store/]
+    exec <--> bq[("BigQuery thelook_ecommerce read-only")]
+    rep --- persona["personas.yaml + memory (LangGraph Store)"]
 
-    graph -. per-node events .-> obs[(JSONL logs +\noptional LangSmith)]
+    agent_graph -. per-node events .-> obs[("JSONL logs + optional LangSmith")]
 ```
 
 ### Production target (where each block maps on GCP)
@@ -57,19 +57,19 @@ flowchart TD
 ```mermaid
 flowchart LR
     user([Manager]) --> ui[Chat UI / Slack]
-    ui --> api[Agent service\nCloud Run]
+    ui --> api["Agent service (Cloud Run)"]
     api --> lg[LangGraph runtime]
 
-    lg --- llmp[[Vertex AI Gemini\nor API provider]]
-    lg <--> vec[(Vertex AI Vector Search\nor Qdrant Cloud)]
-    lg <--> bq[(BigQuery\nread-only service account)]
-    lg --> rep_store[(Saved Reports\nFirestore / GCS)]
+    lg --- llmp[["Vertex AI Gemini or API provider"]]
+    lg <--> vec[("Vertex AI Vector Search or Qdrant Cloud")]
+    lg <--> bq[("BigQuery read-only service account")]
+    lg --> rep_store[("Saved Reports Firestore / GCS")]
 
-    cfg[/Persona & prompt config\nGCS or Firestore/] --> lg
-    gcs[(Golden bucket\nGCS data lake)] --> ingest[Ingestion job\nCloud Run / Composer]
+    cfg["Persona & prompt config (GCS or Firestore)"] --> lg
+    gcs[("Golden bucket GCS data lake")] --> ingest["Ingestion job (Cloud Run / Composer)"]
     ingest --> vec
 
-    lg -. traces/metrics .-> obsv[(LangSmith +\nCloud Logging / Monitoring)]
+    lg -. traces/metrics .-> obsv[("LangSmith + Cloud Logging / Monitoring")]
 ```
 
 ---
